@@ -291,3 +291,229 @@ This turns heuristic parameter selection into a rigorous stochastic optimization
 - Ghadimi & Powell (2024). Energy storage CFA results: 22-30% cost improvement.
 - Optimal Dynamics: optimaldynamics.com (industry application of SDA to trucking).
 - Powell, W.B. (2022). *RLSO*, Ch. 13 (CFA industry examples).
+
+---
+
+## Q8: What are common misunderstandings about state variables that lead to poor modeling?
+
+State variable design is the **single most consequential modeling decision** in SDA. Get it wrong and no policy — however sophisticated — can compensate. Here are the most common misunderstandings, organized from most to least frequent.
+
+---
+
+### Misunderstanding 1: Forgetting the Belief State
+
+**The mistake:** Defining S_t as only physical/tangible quantities and ignoring what the agent *believes* about unknown quantities.
+
+**Why it's damaging:**
+- If there are unknown parameters you're learning about (demand distribution, treatment efficacy, click-through rates), your beliefs about them **must** be in the state
+- Without B_t, two situations with identical physical state but different learning histories look the same to the policy — but they aren't. The optimal action for "I've seen this drug work 8/10 times" is completely different from "I've never tried this drug"
+- Technically, omitting B_t violates the Markov property: the optimal decision depends on history that isn't captured in the state
+
+**The fix:** S_t = (R_t, B_t) where:
+- R_t = physical/resource state (inventory, location, energy stored)
+- B_t = belief state (posterior distributions, sufficient statistics, confidence intervals)
+
+**Example:**
+```
+BAD:   S_t = (inventory_level)
+       → Same state whether demand is well-understood or completely unknown
+
+GOOD:  S_t = (inventory_level, demand_mean_estimate, demand_variance_estimate)
+       → Policy can order conservatively when uncertain, aggressively when confident
+```
+
+**How to detect it:** If your policy "should" behave differently for two scenarios that have the same state representation, you're missing state variables — usually beliefs.
+
+---
+
+### Misunderstanding 2: Confusing "Observable" with "State"
+
+**The mistake:** Defining the state as "everything I can observe right now."
+
+**Why it's wrong:**
+- State is not "what I can see" — it's "what I need to model forward and make decisions"
+- Some state variables are derived, not directly observed (e.g., a running average, a trend estimate, a Bayesian posterior)
+- Some observations are exogenous information W_t (new data arriving), not state. Seeing today's price is an observation; your *model of price dynamics* is state
+
+**The fix:** State = minimal set of variables such that, given S_t, you can:
+1. Make a decision
+2. Compute the transition to S_{t+1} (given x_t and W_{t+1})
+3. Evaluate the objective function
+
+**Example:**
+```
+CONFUSED:  "My state is the current stock price"
+           → But your decision also depends on your position, risk tolerance,
+             and beliefs about volatility — those are all state
+
+CLEAR:     S_t = (price_t, shares_held_t, volatility_estimate_t, time_remaining)
+```
+
+---
+
+### Misunderstanding 3: Over-Specifying the State (Kitchen Sink)
+
+**The mistake:** Throwing everything into the state "just in case" — full order history, every sensor reading, the complete weather forecast, every customer interaction.
+
+**Why it's damaging:**
+- **Curse of dimensionality:** VFA methods scale poorly with state dimension. A state with 1000 components makes value function approximation nearly impossible
+- **Overfitting:** Policies trained on high-dimensional states may memorize training scenarios rather than learn generalizable structure
+- **Computational cost:** Every additional state variable multiplies the space that must be explored
+- **Obscures structure:** The modeler can't see the essential dynamics buried under noise variables
+
+**The fix:** Apply the **minimal sufficiency test** — for each candidate state variable, ask:
+- Does removing it change the optimal decision in any scenario? If no → remove it
+- Does removing it make the transition function non-deterministic (given W_t)? If no → remove it
+- Can it be derived from other state variables? If yes → remove it
+
+**Example:**
+```
+OVER-SPECIFIED:  S_t = (inventory, last_30_days_demand, supplier_lead_times,
+                        weather_forecast, GDP_growth, competitor_prices,
+                        day_of_week, holiday_flag, ...)
+                 → 50+ dimensional state; impossible to learn a value function
+
+MINIMAL:         S_t = (inventory, demand_mean_estimate, demand_std_estimate,
+                        pending_orders)
+                 → 4 variables capturing essential dynamics
+```
+
+**Powell's guidance:** "The art of SDA modeling is finding the *minimal sufficient state*." Start small, add variables only when they demonstrably improve policy performance.
+
+---
+
+### Misunderstanding 4: Under-Specifying the State (Non-Markov Trap)
+
+**The mistake:** Leaving out variables that the optimal decision depends on, making the problem appear non-Markov.
+
+**Symptoms:**
+- Your policy performs inconsistently — same state, different outcomes
+- You find yourself wanting to "look back" at past decisions or observations
+- The transition function seems to have hidden randomness beyond W_t
+
+**Common missing components:**
+
+| Symptom | What's Missing | Fix |
+|---------|---------------|-----|
+| Decision depends on momentum/trend | Lagged values or trend variable | Add ΔS_{t-1} or trend estimate |
+| Decision depends on "how long we've been here" | Duration/time-in-state | Add counter or elapsed time |
+| Decision depends on previous action | Last action taken | Add x_{t-1} to state |
+| Decision depends on budget spent so far | Cumulative expenditure | Add running total |
+| Decision depends on commitments made | Pending orders/contracts | Add pipeline state |
+| Different outcomes for same physical state | Belief state | Add B_t (see Misunderstanding 1) |
+
+**Example:**
+```
+UNDER-SPECIFIED:  S_t = (current_price)
+                  → Can't distinguish "price rising from 50" from "price falling from 50"
+                  → Policy can't capture momentum-based strategies
+
+SUFFICIENT:       S_t = (current_price, price_change_last_period)
+                  → Now trending up and trending down are different states
+```
+
+---
+
+### Misunderstanding 5: Treating State as Static Design Rather Than Dynamic
+
+**The mistake:** Defining the state once at the start and never revisiting as you learn about the problem.
+
+**Why it's wrong:**
+- State design is iterative. You discover missing components when policies behave unexpectedly
+- As you try different policy classes, you may need different state representations (VFA may need aggregated features; PFA may use raw values)
+- The "right" state depends on the policy class you're using
+
+**The fix:** Treat state design as part of the modeling loop:
+1. Define initial state → implement policy → evaluate
+2. If performance is poor or inconsistent → diagnose: is the state complete?
+3. Add/remove variables → re-evaluate
+4. Repeat
+
+---
+
+### Misunderstanding 6: Confusing Pre-Decision and Post-Decision State
+
+**The mistake:** Not distinguishing between the state *before* and *after* a decision is made, leading to incorrect value function training.
+
+**Why it matters:**
+- **Pre-decision state** S_t: the state before you act. Your policy maps this to a decision
+- **Post-decision state** S_t^x: the state after you decide but before new information arrives. S_t^x = S^M_x(S_t, x_t)
+- **Post-information state** S_{t+1}: after W_{t+1} arrives. S_{t+1} = S^M_W(S_t^x, W_{t+1})
+
+**Why the distinction matters for VFA:**
+- If you approximate V(S_t) (pre-decision), you need to take an expectation over W_{t+1} inside the optimization — expensive
+- If you approximate V(S_t^x) (post-decision), the expectation is baked into the value function — the optimization becomes deterministic
+- Using the wrong one leads to either: (a) incorrect Bellman updates, or (b) intractable expectations inside the policy
+
+**Example:**
+```
+Pre-decision:   S_t = (inventory = 10, pending_orders = 5)
+Decision:       x_t = order 20 more units
+Post-decision:  S_t^x = (inventory = 10, pending_orders = 5, new_order = 20)
+                 → deterministic given S_t and x_t
+New info:       W_{t+1} = (demand = 8, delivery of previous order = 5)
+Next state:     S_{t+1} = (inventory = 10 + 5 - 8 = 7, pending_orders = 20)
+```
+
+**Citation:** Powell, W.B. (2022). *RLSO*, Ch. 14-16 (pre-decision vs. post-decision state is central to ADP algorithms).
+
+---
+
+### Misunderstanding 7: Encoding Domain Knowledge as State Instead of Policy
+
+**The mistake:** Adding "hint" variables to the state that encode what the *decision should be* rather than what the *situation is*.
+
+**Example:**
+```
+BAD:   S_t = (inventory, demand_forecast, should_reorder_flag)
+       → The "should_reorder_flag" is a policy output, not a state variable
+       → It contaminates the state with a specific policy's logic
+
+GOOD:  S_t = (inventory, demand_forecast)
+       → Let the POLICY decide whether to reorder, based on the state
+```
+
+**Why it's damaging:**
+- Bakes one policy's logic into the model, making it impossible to compare alternative policies fairly
+- Violates the "model first, then solve" principle — the model should be policy-agnostic
+- Leads to circular definitions: the state depends on the policy which depends on the state
+
+**The fix:** State variables should describe the *situation*, never the *recommendation*. Policy-specific computed quantities belong in the policy, not the model.
+
+---
+
+### Misunderstanding 8: Ignoring Information Timing
+
+**The mistake:** Including information in S_t that wouldn't actually be available at decision time t.
+
+**Why it's critical:**
+- S_t must only contain information known at time t, BEFORE the decision x_t
+- Including future information (even partially) creates **look-ahead bias** — the policy appears to perform well in simulation but fails in deployment
+- This is the sequential decision analog of **data leakage** in machine learning
+
+**Common violations:**
+- Using end-of-day price to make a beginning-of-day trading decision
+- Using actual demand to make an ordering decision (instead of forecast/belief)
+- Including outcomes of the current decision in the state used to make that decision
+
+**The fix:** For every state variable, ask: "Is this known BEFORE I make decision x_t?" If not, it's either exogenous information W_{t+1} or it belongs in a future state.
+
+---
+
+### Summary: The State Design Checklist
+
+For every candidate state variable, verify:
+
+- [ ] **Needed for decisions?** Does the policy ever use this to choose x_t?
+- [ ] **Needed for transitions?** Is it required to compute S_{t+1}?
+- [ ] **Available at decision time?** Is it known before x_t is chosen?
+- [ ] **Not derivable?** Can it be computed from other state variables? If so, remove it
+- [ ] **Belief states included?** If learning about unknowns, are posterior parameters in S_t?
+- [ ] **Policy-agnostic?** Does it describe the situation, not the recommendation?
+- [ ] **Minimal?** Would removing it change the optimal decision? If not, remove it
+- [ ] **Markov?** Given S_t, is the future independent of history?
+
+### Citations
+- Powell, W.B. (2022). *RLSO*, Ch. 11 (State Variables — the most detailed treatment).
+- Powell, W.B. (2022). *SDAM*, Ch. 1 and Ch. 7 (State variables with examples).
+- Powell, W.B. (2020). "On State Variables, Bandit Problems and POMDPs."
