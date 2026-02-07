@@ -898,3 +898,183 @@ Sources of uncertainty are NOT independent — they interact and compound:
 - Ben-Haim, Y. (2006). *Info-Gap Decision Theory*. (Robustness to deep uncertainty.)
 - Lempert, R.J. et al. (2003). *Shaping the Next One Hundred Years: New Methods for Quantitative, Long-Term Policy Analysis*. RAND. (Robust decision making.)
 - Box, G.E.P. (1976). "Science and statistics." *JASA*, 71(356), 791-799. ("All models are wrong, but some are useful.")
+
+---
+
+## Q10: What IS a decision? (Powell's formal definition)
+
+Powell observes that despite decisions being the most fundamental human activity, the vast mathematical literature has no general, broadly applicable definition. Researchers simply introduce notation — x, a, u — and start modeling, but *"you cannot assign a variable until you have already identified the type of decision."*
+
+> "It is astonishing that such a fundamental activity of people lacks a general, broadly applicable definition." — Warren B. Powell
+
+This matters because: **you cannot make a better decision until you recognize that you are making a decision.**
+
+---
+
+### Powell's Definition
+
+**Formal definition:** A decision is an *endogenously controllable information class*.
+
+**Informal definition:** A decision is *something we control*.
+
+---
+
+### The Three Classes of Information
+
+Powell defines any controllable system — always viewed as a process evolving over time — as containing exactly **three classes of information**:
+
+| Class | Symbol (SDA) | Description | Controlled? |
+|-------|-------------|-------------|-------------|
+| **1. What we know (or believe)** | S_t | State variables — all information available at time t | No — it's the result of history |
+| **2. What we decide** | x_t | Decision variables — what we control | **Yes — this IS the decision** |
+| **3. What we observe/learn** | W_t | Exogenous information — new data arriving | No — it comes from the environment |
+
+The decision is class 2 — and ONLY class 2. Everything else is either known state or unknowable future information.
+
+This three-way partition is exhaustive and mutually exclusive. Every piece of information in a sequential decision problem belongs to exactly one class. This clarity is what makes the SDA framework universal.
+
+---
+
+### Types of Decisions
+
+Decisions are richer and more varied than most treatments suggest. Powell provides a comprehensive taxonomy:
+
+**By data type:**
+
+| Type | Description | Examples |
+|------|-------------|---------|
+| **Binary** | Yes/no, stop/go | Sell the asset or hold? Accept the offer or reject? A/B testing |
+| **Discrete/Categorical** | Choose from a finite set | Which drug to prescribe? Which ad to show? Which route to take? |
+| **Continuous** | Choose a real number | What price to set? What temperature? What dosage? How much to order? |
+| **Integer** | Choose a whole number | How many units to order? How many nurses to schedule? |
+
+**By dimensionality:**
+
+| Type | Description | Examples |
+|------|-------------|---------|
+| **Scalar** | Single decision variable | How much energy to buy/sell |
+| **Vector** | Multiple simultaneous decisions | Allocate budget across 50 products; set prices for 100 items; schedule staff across 20 shifts |
+
+**By structure:**
+
+| Type | Description | Examples |
+|------|-------------|---------|
+| **Unconstrained** | Any value allowed | Set a temperature |
+| **Box-constrained** | Bounded above/below | Order between 0 and warehouse capacity |
+| **Linearly constrained** | Budget/resource constraints | Allocate $1M across investments (must sum to $1M) |
+| **Combinatorial** | Discrete feasibility structure | Vehicle routing (which sequence of stops?), scheduling (which job on which machine?) |
+
+---
+
+### Notation Across Communities
+
+Different communities use different notation for the same concept, creating barriers to knowledge transfer:
+
+| Community | Symbol | Typical Assumption | Limitation |
+|-----------|--------|--------------------|------------|
+| **Math programming / OR** | x | Any type (binary, integer, continuous, vector) | Most general notation |
+| **Reinforcement learning / MDP** | a (action) | Usually discrete/finite | Excludes continuous and vector decisions naturally |
+| **Optimal control** | u (control) | Usually low-dimensional continuous | Excludes combinatorial decisions |
+| **Powell's SDA** | x_t | **Any type** — inherits from math programming | Deliberately chosen for maximum generality |
+
+**Why Powell chose x_t:** The math programming community's notation is the most general. Using `x` reminds us that decisions can be anything — binary, categorical, continuous, vector, constrained. Using `a` (from RL) or `u` (from control) implicitly narrows the decision space and can cause modelers to overlook decision types their notation doesn't naturally express.
+
+---
+
+### What Makes a Decision a Decision?
+
+Three defining properties distinguish decisions from other information:
+
+**1. Endogenous control:** The decision-maker *chooses* x_t. It is not imposed by the environment (that would be W_t) and not inherited from the past (that would be S_t).
+
+**2. Made at a specific time:** x_t is chosen at time t, using only information available at time t (i.e., S_t). It cannot depend on future information — that would violate causality.
+
+**3. Subject to constraints:** x_t ∈ X_t(S_t). The set of feasible decisions depends on the current state. You can't order more than your budget allows; you can't prescribe a drug the patient is allergic to.
+
+---
+
+### Decisions We Don't Recognize
+
+A key motivation of Powell's article: we frequently make decisions without realizing it. Unrecognized decisions cannot be improved.
+
+**Common "invisible" decisions:**
+
+| Situation | The hidden decision | Why it matters |
+|-----------|-------------------|----------------|
+| Following a routine | The decision to continue the routine (vs. change) | Routines are PFAs — but are they good ones? |
+| Doing nothing | Inaction is a decision (to maintain current state) | "No decision" is the most common — and often worst — decision |
+| Accepting a default | The decision to not override the default | Defaults are powerful; accepting them is an active choice |
+| Delegating | The decision of what to delegate and to whom | Delegation is a meta-decision about who decides |
+| Choosing what to measure | The decision of what information to gather | This shapes B_t — and therefore all future decisions |
+| Framing the problem | The decision of how to model the situation | The frame determines which options are even considered |
+| Setting a deadline | The decision of when to decide | Timing can be as important as the decision itself |
+
+---
+
+### How Humans Naturally Use All Four Policy Classes
+
+Powell observes that humans, without any training, naturally use all four classes of policies:
+
+| Policy Class | Human Example | Description |
+|-------------|---------------|-------------|
+| **PFA** | Rules of thumb | "Never buy a car more than $X." "Always tip 20%." "If it's cloudy, bring an umbrella." |
+| **CFA** | Mental budgeting with buffers | "I'll budget $500 for groceries, plus $100 buffer for unexpected needs." |
+| **VFA** | Experience-based intuition | "That neighborhood is worth paying more for" (learned value of states through experience) |
+| **DLA** | Planning ahead | "If I leave at 7am, traffic should be light, so I'll arrive by 8." |
+
+The SDA framework doesn't invent new ways of deciding — it **formalizes and improves** how we already decide, by making the process systematic, tunable, and evaluable.
+
+---
+
+### Powell's 97% Claim
+
+Powell estimates that **three policy classes cover approximately 97% of all decisions made in practice:**
+
+1. **PFAs** (policy function approximations — rules, lookup tables, heuristics)
+2. **CFAs** (cost function approximations — parameterized optimization models)
+3. **Deterministic DLAs** (direct lookahead — plan over a forecasted horizon)
+
+The remaining ~3% involve VFAs (value function approximation / Bellman-style methods) or stochastic DLAs. This directly challenges the academic emphasis on RL/DP as the primary tool for sequential decisions.
+
+---
+
+### The Relationship Between Decisions, Policies, and Optimization
+
+A subtle but critical distinction:
+
+```
+Decision (x_t):     A single choice at time t
+Policy (π):         A RULE for making decisions: x_t = X^π(S_t)
+Optimization:       Finding the BEST policy: π* = argmax_π E[Σ C(S_t, X^π(S_t))]
+```
+
+- The **decision** is what you do right now
+- The **policy** is the strategy for what to do in every possible state
+- **Optimization** is the search for the best policy
+- In SDA, we optimize over POLICIES, not over individual decisions
+- The objective function evaluates a policy, not a single decision
+
+This is why Powell insists on "model first, then solve" — the model defines the decisions, states, and uncertainties. The policy is the solution method. They must not be conflated.
+
+---
+
+### Implications for Problem Framing
+
+When framing a new problem, the decision definition drives everything:
+
+1. **First identify the decisions** — What is actually being controlled? By whom? When?
+2. **Then define the state** — What information is needed to make those decisions?
+3. **Then characterize uncertainty** — What is unknown when decisions are made?
+4. **Then write the transition** — How do decisions and uncertainty change the state?
+5. **Finally define the objective** — What makes some decisions better than others?
+
+If you can't clearly state what the decision is, you're not ready to model.
+
+---
+
+### Citations
+- Powell, W.B. "What is a decision? (... and how do we make them)." CASTLE Lab, Princeton University. [castle.princeton.edu/makingdecisions/](https://castle.princeton.edu/makingdecisions/)
+- Powell, W.B. (2023). "A Universal Framework for Sequential Decision Problems." *ORMS Today*. [pubsonline.informs.org](https://pubsonline.informs.org/do/10.1287/orms.2023.01.02/full/)
+- Powell, W.B. (2022). *Sequential Decision Analytics and Modeling*. NOW Publishers. Ch. 1.
+- Powell, W.B. (2022). *RLSO*. Wiley. Ch. 1-2.
+- Howard, R.A. (1966). "Information Value Theory." *IEEE Trans. Systems Science and Cybernetics*, 2(1), 22-26. (Original value-of-information framework referenced by Powell.)
